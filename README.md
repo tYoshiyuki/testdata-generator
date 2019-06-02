@@ -6,6 +6,14 @@ Unit Test向けにテストデータを生成を支援するライブラリ
 - Entity Framework Core
 - EPPlus
 
+## Project
+- TestdataGenerator.Library
+    - ライブラリ本体
+- TestdataGenerator.Library.Test
+    - ライブラリのユニットテスト
+- TestdataGenerator
+    - サンプル実装のプロジェクト
+
 ## Description
 ### **ExcelExtention (ExcelWorksheetの拡張メソッドを実装するクラス)**
 - ToList<T>
