@@ -11,7 +11,9 @@ namespace TestdataGenerator.Library.Extentions
         /// <summary>
         /// ExcelブックのデータをDBに書き込みます
         /// ワークシート名を元に対象となるテーブル名を特定し、データの書き込みを行います
-        /// </summary>
+        /// ワークシート1列目の値を元に、insert文のカラム名を構築します
+        /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         public static void ReadExcelWriteDb(this DbContext dbContext, string path)
@@ -29,6 +31,9 @@ namespace TestdataGenerator.Library.Extentions
         /// <summary>
         /// ExcelブックのデータでDBのデータを置き換えます
         /// ワークシート名を元に対象となるテーブル名を特定し、データの書き込みを行います
+        /// ワークシート1列目の値を元に、insert文のカラム名を構築します
+        /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
         /// </summary>
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
@@ -39,7 +44,7 @@ namespace TestdataGenerator.Library.Extentions
             {
                 foreach (var sheet in package.Workbook.Worksheets)
                 {
-                    dbContext.Database.ExecuteSqlCommand($"delete {sheet.Name}");
+                    dbContext.Database.ExecuteSqlCommand($"delete {sheet.Name}", sheet.Name);
                 }
 
                 foreach (var sheet in package.Workbook.Worksheets)
@@ -52,7 +57,9 @@ namespace TestdataGenerator.Library.Extentions
         /// <summary>
         /// Excelブックのデータを対象のテーブルに書き込みます
         /// ワークシート名を元に対象となるテーブル名を特定し、データの書き込みを行います
-        /// </summary>
+        /// ワークシート1列目の値を元に、insert文のカラム名を構築します
+        /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         /// <param name="tableName"></param>
@@ -62,7 +69,7 @@ namespace TestdataGenerator.Library.Extentions
             using (var package = new ExcelPackage(file))
             {
                 var sheet = package.Workbook.Worksheets.FirstOrDefault(_ => _.Name == tableName)
-                    ?? throw new ArgumentException("登録対象のテーブルがExcelブックに存在しませんでした。");                
+                    ?? throw new ArgumentException("登録対象のテーブルがExcelブックに存在しませんでした。");
                 WriteTable(dbContext, sheet);
             }
         }
@@ -70,7 +77,9 @@ namespace TestdataGenerator.Library.Extentions
         /// <summary>
         /// Excelブックのデータで対象のテーブルを置き換えます
         /// ワークシート名を元に対象となるテーブル名を特定し、データの書き込みを行います
-        /// </summary>
+        /// ワークシート1列目の値を元に、insert文のカラム名を構築します
+        /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         /// <param name="tableName"></param>
@@ -79,7 +88,7 @@ namespace TestdataGenerator.Library.Extentions
             var file = new FileInfo(path);
             using (var package = new ExcelPackage(file))
             {
-                dbContext.Database.ExecuteSqlCommand($"delete {tableName}");
+                dbContext.Database.ExecuteSqlCommand($"delete {tableName}", tableName);
                 var sheet = package.Workbook.Worksheets.FirstOrDefault(_ => _.Name == tableName)
                     ?? throw new ArgumentException("登録対象のテーブルがExcelブックに存在しませんでした。");
                 WriteTable(dbContext, sheet);
@@ -88,8 +97,8 @@ namespace TestdataGenerator.Library.Extentions
 
         /// <summary>
         /// ワークシートの内容をテーブルに書き込みます
-        /// ワークシート1列目の値を元に、カラムを構築します
-        /// ワークシート2列目以降の値を元に、データを構築します
+        /// ワークシート1列目の値を元に、insert文のカラムを構築します
+        /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
         /// </summary>
         /// <param name="dbContext"></param>
         /// <param name="sheet"></param>
@@ -98,7 +107,7 @@ namespace TestdataGenerator.Library.Extentions
             // Excelデータを取得します
             var values = sheet.GetCellValues();
 
-            // SQLのカラム部分を構築します
+            // insert文のカラム部分を構築します
             var columns = values.FirstOrDefault()
                 ?? throw new ArgumentException($"ワークシート1列目にカラム名を設定してください。[ワークシート名:{sheet.Name}]");
 
@@ -107,11 +116,11 @@ namespace TestdataGenerator.Library.Extentions
 
             var cols = string.Join(',', columns);
 
-            // SQLのデータ部分を構築します
-            var rows = values.Skip(1).Select(l => $"({string.Join(',', l.Select(_ => _.ToUpper() != "NULL" ? $"'{_}'" : "null"))})");
+            // insert文のvalues部を構築します
+            var rows = values.Skip(1).Select(l => $"({string.Join(',', l.Select(_ => _.ToUpper() != "NULL" ? $"'{_.Replace("'", "''")}'" : "null"))})");
             if (rows.Count() == 0) return;
 
-            var sql = $"insert into {sheet.Name} ({cols}) values {string.Join(',', rows)}";            
+            var sql = $"insert into {sheet.Name} ({cols}) values {string.Join(',', rows)}";
 
             try
             {
@@ -119,10 +128,9 @@ namespace TestdataGenerator.Library.Extentions
                 dbContext.Database.ExecuteSqlCommand(sql);
 #pragma warning restore EF1000
             }
-            catch
+            catch (Exception ex)
             {
-                Console.Error.WriteLine($"SQL実行に失敗しました:[{sql}]");
-                throw;
+                throw new Exception($"SQL実行に失敗しました:[{sql}]", ex);
             }
         }
     }

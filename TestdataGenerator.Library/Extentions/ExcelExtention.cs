@@ -12,6 +12,9 @@ namespace TestdataGenerator.Library.Extentions
         /// 対象となるExcelワークシートからセルの値を取得し、対応するオブジェクトのリストを生成します
         /// ワークシート1列目の値を元に、マッピング対象のオブジェクトのプロパティをマッピングします
         /// ワークシート2列目以降の値を元に、オブジェクトの値を設定します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとして値を設定します
+        /// 対応している型は int, int?, short, short?, long, long?, decimal, decimal?, double, double?, DataTime, DataTime?, string, Enum です
+        /// 上記以外は System.Convert.ChangeType による変換を試みます
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="worksheet"></param>
@@ -36,8 +39,8 @@ namespace TestdataGenerator.Library.Extentions
             var columnMaps = new List<ExcelMap>();
 
             // 1列目よりカラム情報を取得します
-            var columns = values.FirstOrDefault()
-                ?? throw new ArgumentException($"ワークシート1列目にマッピング対象のオブジェクトのプロパティ名を設定してください。[ワークシート名:{worksheet.Name}]");
+            var columns = values.FirstOrDefault()?.Where(_ => !string.IsNullOrEmpty(_)) ?? Enumerable.Empty<string>();
+            if (columns.Count() == 0) throw new ArgumentException($"ワークシート1列目にマッピング対象のオブジェクトのプロパティ名を設定してください。[ワークシート名:{worksheet.Name}]");
 
             var keys = columns.GroupBy(_ => _).Where(_ => _.Count() > 1).Select(_ => _.Key);
             if (keys.Count() > 0) throw new ArgumentException($"ワークシート1列目に重複しているプロパティ名が存在します。[プロパティ名:{string.Join(',', keys)}]");
@@ -75,28 +78,39 @@ namespace TestdataGenerator.Library.Extentions
                         var propType = prop.PropertyType;
                         object parsed = null;
 
-                        // プロパティの型に応じて変換処理を行います
-                        switch (propType)
+                        try
                         {
-                            case Type intType when propType == typeof(int): parsed = int.Parse(value); break;
-                            case Type nullableIntType when propType == typeof(int?): if (!string.IsNullOrEmpty(value)) parsed = (int?)int.Parse(value); break;
-                            case Type shortType when propType == typeof(short): parsed = short.Parse(value); break;
-                            case Type nullableShortType when propType == typeof(short?): if (!string.IsNullOrEmpty(value)) parsed = (short?)short.Parse(value); break;
-                            case Type longType when propType == typeof(long): parsed = long.Parse(value); break;
-                            case Type nullableLongType when propType == typeof(long?): if (!string.IsNullOrEmpty(value)) parsed = (long?)long.Parse(value); break;
-                            case Type decimalType when propType == typeof(decimal): parsed = decimal.Parse(value); break;
-                            case Type nullableDecimalType when propType == typeof(decimal?): if (!string.IsNullOrEmpty(value)) parsed = (decimal?)decimal.Parse(value); break;
-                            case Type doubleType when propType == typeof(double): parsed = double.Parse(value); break;
-                            case Type nullableDoubleType when propType == typeof(double?): if (!string.IsNullOrEmpty(value)) parsed = (double?)double.Parse(value); break;
-                            case Type dateTimeType when propType == typeof(DateTime): parsed = DateTime.Parse(value); break;
-                            case Type nullableDateTimeType when propType == typeof(DateTime?): if (!string.IsNullOrEmpty(value)) parsed = DateTime.Parse(value); break;
-                            case Type stringType when propType == typeof(string): parsed = value; break;
-                            default: parsed = Convert.ChangeType(value, propType); break;
-                        };
-                        prop.PropertyInfo.SetValue(item, parsed);
+                            // プロパティの型に応じて変換処理を行います
+                            switch (propType)
+                            {
+                                case Type intType when propType == typeof(int): parsed = int.Parse(value); break;
+                                case Type nullableIntType when propType == typeof(int?): if (!string.IsNullOrEmpty(value)) parsed = (int?)int.Parse(value); break;
+                                case Type shortType when propType == typeof(short): parsed = short.Parse(value); break;
+                                case Type nullableShortType when propType == typeof(short?): if (!string.IsNullOrEmpty(value)) parsed = (short?)short.Parse(value); break;
+                                case Type longType when propType == typeof(long): parsed = long.Parse(value); break;
+                                case Type nullableLongType when propType == typeof(long?): if (!string.IsNullOrEmpty(value)) parsed = (long?)long.Parse(value); break;
+                                case Type decimalType when propType == typeof(decimal): parsed = decimal.Parse(value); break;
+                                case Type nullableDecimalType when propType == typeof(decimal?): if (!string.IsNullOrEmpty(value)) parsed = (decimal?)decimal.Parse(value); break;
+                                case Type doubleType when propType == typeof(double): parsed = double.Parse(value); break;
+                                case Type nullableDoubleType when propType == typeof(double?): if (!string.IsNullOrEmpty(value)) parsed = (double?)double.Parse(value); break;
+                                case Type dateTimeType when propType == typeof(DateTime): parsed = DateTime.Parse(value); break;
+                                case Type nullableDateTimeType when propType == typeof(DateTime?): if (!string.IsNullOrEmpty(value)) parsed = DateTime.Parse(value); break;
+                                case Type stringType when propType == typeof(string): parsed = value; break;
+                                case Type enumType when propType.IsEnum:
+                                    if (value == null) throw new ArgumentException($"Enum型の項目にNULLを設定することは出来ません。");
+                                    parsed = Enum.Parse(enumType, value); break;
+                                default: parsed = Convert.ChangeType(value, propType); break;
+                            };
+                            prop.PropertyInfo.SetValue(item, parsed);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new ArgumentException($"変換処理でエラーが発生しました。[ワークシート名:{worksheet.Name}][プロパティ名:{column.Name}][行数:{i}]", ex);
+                        }
                     }
                 }
                 retList.Add(item);
+                i++;
             }
             return retList;
         }
