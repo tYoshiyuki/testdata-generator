@@ -84,7 +84,7 @@ namespace TestdataGenerator.Library.Extentions
                             case Type nullableShortType when propType == typeof(short?): if (!string.IsNullOrEmpty(value)) parsed = (short?)short.Parse(value); break;
                             case Type longType when propType == typeof(long): parsed = long.Parse(value); break;
                             case Type nullableLongType when propType == typeof(long?): if (!string.IsNullOrEmpty(value)) parsed = (long?)long.Parse(value); break;
-                            case Type longType when propType == typeof(decimal): parsed = decimal.Parse(value); break;
+                            case Type decimalType when propType == typeof(decimal): parsed = decimal.Parse(value); break;
                             case Type nullableDecimalType when propType == typeof(decimal?): if (!string.IsNullOrEmpty(value)) parsed = (decimal?)decimal.Parse(value); break;
                             case Type doubleType when propType == typeof(double): parsed = double.Parse(value); break;
                             case Type nullableDoubleType when propType == typeof(double?): if (!string.IsNullOrEmpty(value)) parsed = (double?)double.Parse(value); break;
