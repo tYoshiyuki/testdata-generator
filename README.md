@@ -38,6 +38,10 @@ Unit Test向けにテストデータを生成を支援するライブラリ
                     .ToList<Item>();
             }
 ```
+- ToJson<T>
+
+  - 対象となるExcelワークシートからセルの値を取得し、対応するオブジェクトのJSONを生成します。  
+    その他の仕様は、ToList<T>と同様になります。
 
 ### **DbContextExtention (DbContextの拡張メソッドを実装するクラス)**
 - 共通仕様

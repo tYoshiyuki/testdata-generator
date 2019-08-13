@@ -1,7 +1,10 @@
 ﻿using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Json;
+using System.Text;
 
 namespace TestdataGenerator.Library.Extentions
 {
@@ -157,6 +160,36 @@ namespace TestdataGenerator.Library.Extentions
                     list.Add(worksheet.Cells[i, j].Value?.ToString() ?? string.Empty);
                 }
                 yield return list;
+            }
+        }
+
+        /// <summary>
+        /// 対象となるExcelワークシートからセルの値を取得し、対応するオブジェクトのJSONを生成します
+        /// ワークシート1列目の値を元に、マッピング対象のオブジェクトのプロパティをマッピングします
+        /// ワークシート2列目以降の値を元に、オブジェクトの値を設定します
+        /// セル内に "NULL" (文字列) を設定した場合、nullとして値を設定します
+        /// 対応している型は int, int?, short, short?, long, long?, decimal, decimal?, double, double?, DataTime, DataTime?, string, Enum です
+        /// 上記以外は System.Convert.ChangeType による変換を試みます
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="worksheet"></param>
+        /// <param name="map">Excelとオブジェクト プロパティ名のマッピング情報</param>
+        /// <returns></returns>
+        public static string ToJson<T>(this ExcelWorksheet worksheet, Dictionary<string, string> map = null)
+            where T : new()
+        {
+            var list = ToList<T>(worksheet, map);
+
+            // Jsonへシリアライズ
+            using (var stream = new MemoryStream())
+            {
+                var serializer = new DataContractJsonSerializer(list.GetType(),
+                    new DataContractJsonSerializerSettings
+                    {
+                        UseSimpleDictionaryFormat = true // Dictionaryを key : value 形式で出力する
+                    });
+                serializer.WriteObject(stream, list);
+                return Encoding.UTF8.GetString(stream.ToArray());
             }
         }
     }

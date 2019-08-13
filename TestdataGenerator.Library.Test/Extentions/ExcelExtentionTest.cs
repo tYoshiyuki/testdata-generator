@@ -139,6 +139,24 @@ namespace TestdataGenerator.Library.Test.Extentions
             }
         }
 
+        [Fact]
+        public void ToJson_正常系()
+        {
+            // Arrange
+            var path = Path.Combine(_rootPath, "TestData.xlsx");
+            var file = new FileInfo(path);
+
+            using (var package = new ExcelPackage(file))
+            {
+                // Act
+                var json = package.Workbook.Worksheets.First(_ => _.Name == "TestObject")
+                    .ToJson<TestObject>();
+
+                // Assert
+                json.IsNotEmpty();
+            }
+        }
+
         public class TestObject
         {
             public int ColInt { get; set; }
