@@ -14,6 +14,7 @@ namespace TestdataGenerator.Library.Extentions
         /// ワークシート1列目の値を元に、insert文のカラム名を構築します
         /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
         /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
+        /// </summary>
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         public static void ReadExcelWriteDb(this DbContext dbContext, string path)
@@ -60,6 +61,7 @@ namespace TestdataGenerator.Library.Extentions
         /// ワークシート1列目の値を元に、insert文のカラム名を構築します
         /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
         /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
+        /// </summary>
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         /// <param name="tableName"></param>
@@ -80,6 +82,7 @@ namespace TestdataGenerator.Library.Extentions
         /// ワークシート1列目の値を元に、insert文のカラム名を構築します
         /// ワークシート2列目以降の値を元に、insert文のvalues部を構築します
         /// セル内に "NULL" (文字列) を設定した場合、nullとしてinsertを行います
+        /// </summary>
         /// <param name="dbContext"></param>
         /// <param name="path">Excelファイルのパス</param>
         /// <param name="tableName"></param>
@@ -105,20 +108,23 @@ namespace TestdataGenerator.Library.Extentions
         private static void WriteTable(DbContext dbContext, ExcelWorksheet sheet)
         {
             // Excelデータを取得します
-            var values = sheet.GetCellValues();
+            var values = sheet.GetCellValues().ToList();
 
             // insert文のカラム部分を構築します
             var columns = values.FirstOrDefault()
                 ?? throw new ArgumentException($"ワークシート1列目にカラム名を設定してください。[ワークシート名:{sheet.Name}]");
 
-            var keys = columns.GroupBy(_ => _).Where(_ => _.Count() > 2).Select(_ => _.Key);
-            if (keys.Count() > 0) throw new ArgumentException($"ワークシート1列目に重複しているカラム名が存在します。[カラム名:{string.Join(',', keys)}]");
+            var keys = columns.GroupBy(_ => _)
+                .Where(_ => _.Count() > 2)
+                .Select(_ => _.Key).ToList();
+            if (keys.Any()) throw new ArgumentException($"ワークシート1列目に重複しているカラム名が存在します。[カラム名:{string.Join(',', keys)}]");
 
             var cols = string.Join(',', columns);
 
             // insert文のvalues部を構築します
-            var rows = values.Skip(1).Select(l => $"({string.Join(',', l.Select(_ => _.ToUpper() != "NULL" ? $"'{_.Replace("'", "''")}'" : "null"))})");
-            if (rows.Count() == 0) return;
+            var rows = values.Skip(1)
+                .Select(l => $"({string.Join(',', l.Select(_ => _.ToUpper() != "NULL" ? $"'{_.Replace("'", "''")}'" : "null"))})").ToList();
+            if (!rows.Any()) return;
 
             var sql = $"insert into {sheet.Name} ({cols}) values {string.Join(',', rows)}";
 

@@ -10,7 +10,7 @@ namespace TestdataGenerator
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var path = Path.Combine(Environment.CurrentDirectory, "Data", "Data.xlsx");
             var file = new FileInfo(path);
@@ -25,7 +25,7 @@ namespace TestdataGenerator
             }
 
             path = Path.Combine(Environment.CurrentDirectory, "Data", "DbData.xlsx");
-            var db = new TestDataContextFactory().CreateDbContext(null);
+            var db = new TestDataContextFactory().CreateDbContext(new string[0]);
 
             // DbContextExtentionのサンプル
             db.ReadExcelWriteDb(path);

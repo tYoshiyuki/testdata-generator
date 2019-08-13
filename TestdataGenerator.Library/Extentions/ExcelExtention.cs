@@ -1,7 +1,6 @@
 ﻿using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace TestdataGenerator.Library.Extentions
@@ -23,27 +22,23 @@ namespace TestdataGenerator.Library.Extentions
         public static List<T> ToList<T>(this ExcelWorksheet worksheet, Dictionary<string, string> map = null) where T : new()
         {
             var props = typeof(T).GetProperties()
-                .Select(prop =>
+                .Select(prop => new
                 {
-                    var displayAttribute = (DisplayAttribute)prop.GetCustomAttributes(typeof(DisplayAttribute), false).FirstOrDefault();
-                    return new
-                    {
-                        prop.Name,
-                        PropertyInfo = prop,
-                        prop.PropertyType,
-                    };
+                    prop.Name,
+                    PropertyInfo = prop,
+                    prop.PropertyType,
                 })
             .ToList();
 
-            var values = worksheet.GetCellValues();
+            var values = worksheet.GetCellValues().ToList();
             var columnMaps = new List<ExcelMap>();
 
             // 1列目よりカラム情報を取得します
-            var columns = values.FirstOrDefault()?.Where(_ => !string.IsNullOrEmpty(_)) ?? Enumerable.Empty<string>();
-            if (columns.Count() == 0) throw new ArgumentException($"ワークシート1列目にマッピング対象のオブジェクトのプロパティ名を設定してください。[ワークシート名:{worksheet.Name}]");
+            var columns = values.FirstOrDefault()?.Where(_ => !string.IsNullOrEmpty(_)).ToList() ?? new List<string>();
+            if (!columns.Any()) throw new ArgumentException($"ワークシート1列目にマッピング対象のオブジェクトのプロパティ名を設定してください。[ワークシート名:{worksheet.Name}]");
 
-            var keys = columns.GroupBy(_ => _).Where(_ => _.Count() > 1).Select(_ => _.Key);
-            if (keys.Count() > 0) throw new ArgumentException($"ワークシート1列目に重複しているプロパティ名が存在します。[プロパティ名:{string.Join(',', keys)}]");
+            var keys = columns.GroupBy(_ => _).Where(_ => _.Count() > 1).Select(_ => _.Key).ToList();
+            if (keys.Any()) throw new ArgumentException($"ワークシート1列目に重複しているプロパティ名が存在します。[プロパティ名:{string.Join(',', keys)}]");
 
             var i = 1;
             foreach(var col in columns)
@@ -72,7 +67,7 @@ namespace TestdataGenerator.Library.Extentions
                     var prop = string.IsNullOrWhiteSpace(column.MappedTo) ? null : props.FirstOrDefault(p => p.Name.Contains(column.MappedTo));
                     if (prop != null)
                     {
-                        var value = row[column.Index - 1].ToString();
+                        var value = row[column.Index - 1];
                         if (value.ToUpper() == "NULL") value = null; // NULLを指定していた場合の処理
 
                         var propType = prop.PropertyType;
@@ -83,24 +78,54 @@ namespace TestdataGenerator.Library.Extentions
                             // プロパティの型に応じて変換処理を行います
                             switch (propType)
                             {
-                                case Type intType when propType == typeof(int): parsed = int.Parse(value); break;
-                                case Type nullableIntType when propType == typeof(int?): if (!string.IsNullOrEmpty(value)) parsed = (int?)int.Parse(value); break;
-                                case Type shortType when propType == typeof(short): parsed = short.Parse(value); break;
-                                case Type nullableShortType when propType == typeof(short?): if (!string.IsNullOrEmpty(value)) parsed = (short?)short.Parse(value); break;
-                                case Type longType when propType == typeof(long): parsed = long.Parse(value); break;
-                                case Type nullableLongType when propType == typeof(long?): if (!string.IsNullOrEmpty(value)) parsed = (long?)long.Parse(value); break;
-                                case Type decimalType when propType == typeof(decimal): parsed = decimal.Parse(value); break;
-                                case Type nullableDecimalType when propType == typeof(decimal?): if (!string.IsNullOrEmpty(value)) parsed = (decimal?)decimal.Parse(value); break;
-                                case Type doubleType when propType == typeof(double): parsed = double.Parse(value); break;
-                                case Type nullableDoubleType when propType == typeof(double?): if (!string.IsNullOrEmpty(value)) parsed = (double?)double.Parse(value); break;
-                                case Type dateTimeType when propType == typeof(DateTime): parsed = DateTime.Parse(value); break;
-                                case Type nullableDateTimeType when propType == typeof(DateTime?): if (!string.IsNullOrEmpty(value)) parsed = DateTime.Parse(value); break;
-                                case Type stringType when propType == typeof(string): parsed = value; break;
+                                case Type _ when propType == typeof(int):
+                                    if (value == null) throw new ArgumentException($"int型の項目にNULLを設定することは出来ません。");
+                                    parsed = int.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(int?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = (int?)int.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(short):
+                                    if (value == null) throw new ArgumentException($"short型の項目にNULLを設定することは出来ません。");
+                                    parsed = short.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(short?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = (short?)short.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(long):
+                                    if (value == null) throw new ArgumentException($"long型の項目にNULLを設定することは出来ません。");
+                                    parsed = long.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(long?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = (long?)long.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(decimal):
+                                    if (value == null) throw new ArgumentException($"decimal型の項目にNULLを設定することは出来ません。");
+                                    parsed = decimal.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(decimal?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = (decimal?)decimal.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(double):
+                                    if (value == null) throw new ArgumentException($"double型の項目にNULLを設定することは出来ません。");
+                                    parsed = double.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(double?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = (double?)double.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(DateTime):
+                                    parsed = DateTime.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(DateTime?):
+                                    if (!string.IsNullOrEmpty(value)) parsed = DateTime.Parse(value);
+                                    break;
+                                case Type _ when propType == typeof(string): parsed = value; break;
                                 case Type enumType when propType.IsEnum:
                                     if (value == null) throw new ArgumentException($"Enum型の項目にNULLを設定することは出来ません。");
                                     parsed = Enum.Parse(enumType, value); break;
                                 default: parsed = Convert.ChangeType(value, propType); break;
-                            };
+                            }
+
                             prop.PropertyInfo.SetValue(item, parsed);
                         }
                         catch (Exception ex)

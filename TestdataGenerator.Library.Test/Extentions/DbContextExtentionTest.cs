@@ -21,7 +21,7 @@ namespace TestdataGenerator.Library.Test.Extentions
         /// </summary>
         public DbContextExtentionTest()
         {
-            _context = new TestDataContextFactory().CreateDbContext(null);
+            _context = new TestDataContextFactory().CreateDbContext(new string[0]);
             _context.Database.EnsureCreated(); // DBの初期化
         }
 
