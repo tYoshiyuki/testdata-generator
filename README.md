@@ -5,6 +5,8 @@ Unit Test向けにテストデータを生成を支援するライブラリ
 - .NET Core 2.2
 - Entity Framework Core
 - EPPlus
+- SQL Server
+- Excel
 
 ## Project
 - TestdataGenerator.Library
